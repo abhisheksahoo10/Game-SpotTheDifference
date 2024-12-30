@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Click Coordinates</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .image-row {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin: 40px;
+    }
+
+    .image-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      cursor: pointer;
+    }
+
+    .tick {
+      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 5%;
+      height: 5%;
+      border-radius: 50%;
+      background-color: rgba(0, 255, 0, 0.5);
+       box-shadow: 0 0 10px 5px rgba(0, 255, 0, 0.5);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      font-size: 1.5em;
+      color: white;
+      font-weight: bold;
+    }
+
+    .cross {
+      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 5%;
+      height: 5%;
+      border-radius: 50%;
+      background-color: rgba(255, 0, 0, 0.5);
+      box-shadow: 0 0 10px 5px rgba(255, 0, 0, 0.5);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      font-size: 1.5em;
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="image-row">
+    <div class="image-container">
+      <img src="Designer.jpeg" class="clickable-image" alt="Image 1">
+    </div>
+    <div class="image-container">
+      <img src="openart.jpg" class="clickable-image" alt="Image 2">
+    </div>
+  </div>
+
+  <script>
+    // Predefined coordinates in percentage format (relative to the original image)
+    const predefinedCoordinates = [
+      { 'X': 89, 'Y': 82 },
+      { 'X': 20, 'Y': 53 },
+      { 'X': 73, 'Y': 43 },
+      { 'X': 94, 'Y': 56 }
+    ];
+
+    // Keep track of clicked coordinates
+    const clickedCoordinates = new Set();
+
+    const images = document.querySelectorAll('.clickable-image');
+    const containers = document.querySelectorAll('.image-container');
+
+    // Add click event listener to all images
+    images.forEach((image, index) => {
+      image.addEventListener('click', function (event) {
+        const rect = image.getBoundingClientRect();
+
+        // Calculate click position as percentages
+        const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
+        const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
+
+        console.log(`X: ${xPercent.toFixed(2)}%, Y: ${yPercent.toFixed(2)}%`);
+        // Check if clicked coordinates match predefined coordinates
+        const match = predefinedCoordinates.find(coord => {
+          return (
+            Math.abs(coord.X - xPercent) <= 5 &&
+            Math.abs(coord.Y - yPercent) <= 5
+          );
+        });
+
+        if (match) {
+          console.log('Match:',match)
+          const coordKey = `${match.X},${match.Y}`;
+          if (!clickedCoordinates.has(coordKey)) {
+            clickedCoordinates.add(coordKey);
+
+            // Add tick mark to both images at the correct position
+            containers.forEach(container => {
+              const tick = document.createElement('div');
+              tick.className = 'tick';
+              tick.textContent = '✅';
+              tick.style.left = `${match.X}%`;
+              tick.style.top = `${match.Y}%`;
+              container.appendChild(tick);
+            });
+
+            // Check if all predefined coordinates are clicked
+            if (clickedCoordinates.size === predefinedCoordinates.length) {
+              setTimeout(() => {
+                alert('Completed');
+              }, 300);
+            }
+          }
+        } else {
+          const cross = document.createElement('div');
+          cross.className = 'cross';
+          cross.textContent = '❌';
+          cross.style.left = `${xPercent}%`;
+          cross.style.top = `${yPercent}%`;
+          containers[index].appendChild(cross);
+
+          setTimeout(() => {
+            containers[index].removeChild(cross);
+          }, 1000);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
