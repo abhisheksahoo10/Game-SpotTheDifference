@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        #images-preview-1,
+        #images-preview-2 {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            width: 48%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .clickable-image {
+            position: relative;
+            cursor: pointer;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .tick {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 8%;
+            height: 8%;
+            border-radius: 50%;
+            background-color: rgba(0, 255, 0, 0.8);
+            /* box-shadow: 0 0 10px 5px rgba(0, 255, 0, 0.5); */
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            font-size: 1em;
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <input id="image-input-1" type="file">
+    <input id="image-input-2" type="file">
+
+    <section>
+        <div id="images-preview-1"></div>
+        <div id="images-preview-2"></div>
+    </section>
+    <button onclick="saveTicksvalues()">Save</button>
+    <button onclick="resetTicks()">Reset</button>
+
+    <script>
+        const TOLERANCE = 5;
+        let ticksData = [];
+
+        const handleFileInput = (event, previewContainerId) => {
+            const files = event.target.files;
+            const previewContainer = document.getElementById(previewContainerId);
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+                    const reader = new FileReader();
+
+                    reader.onload = (e) => {
+                        previewContainer.innerHTML = ''; // Clear previous images
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = file.name;
+                        img.style.width = '100%';
+                        img.style.height = 'auto';
+                        img.style.cursor = 'pointer';
+                        img.classList.add('clickable-image');
+                        previewContainer.appendChild(img);
+                    };
+
+                    reader.readAsDataURL(file);
+                }
+            }
+        };
+
+        document.getElementById('image-input-1').addEventListener('change', (e) => handleFileInput(e, 'images-preview-1'));
+        document.getElementById('image-input-2').addEventListener('change', (e) => handleFileInput(e, 'images-preview-2'));
+
+        document.addEventListener('click', (event) => {
+            
+            if (!event.target.classList.contains('clickable-image')) return;
+            if (!document.getElementById('image-input-1').files.length || !document.getElementById('image-input-2').files.length) {
+                alert('Please select images for both inputs!');
+                return;
+            }
+            const rect = event.target.getBoundingClientRect();
+            const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
+
+            console.log(`X: ${xPercent.toFixed(2)}%, Y: ${yPercent.toFixed(2)}%`);
+
+            // Check if the tick is within tolerance of an existing tick
+            let tickToRemove = null;
+            ticksData.forEach((tick, index) => {
+                if (Math.abs(tick.x - xPercent) <= TOLERANCE && Math.abs(tick.y - yPercent) <= TOLERANCE) {
+                    tickToRemove = index; // Mark this tick for removal
+                }
+            });
+            console.log(ticksData);
+
+            if (tickToRemove !== null) {
+                // Capture the tickId before removal
+                const tickId = ticksData[tickToRemove].tickId;
+
+                // Remove the tick from the array
+                ticksData.splice(tickToRemove, 1);
+
+                // Remove the tick from both images
+                document.querySelectorAll(`#images-preview-1 .tick, #images-preview-2 .tick`).forEach(tickElement => {
+                    if (tickElement.id === tickId) {
+                        tickElement.remove();
+                    }
+                });
+            } else {
+                // Add a new tick
+                const tick = document.createElement('div');
+                tick.className = 'tick';
+                tick.textContent = '✔';
+                tick.style.left = `${xPercent}%`;
+                tick.style.top = `${yPercent}%`;
+
+                const tickId = `tick-${Date.now()}`; // Unique ID for each tick (using timestamp)
+
+                // Assign the unique tick ID and position to the ticksData array
+                ticksData.push({
+                    tickId: tickId,
+                    x: xPercent,
+                    y: yPercent 
+                });
+
+                // Add the ID to the tick div element
+                tick.id = tickId;
+
+                // Append the tick to both image previews
+                const previews = [document.getElementById('images-preview-1'), document.getElementById('images-preview-2')];
+                previews.forEach((container) => {
+                    const img = container.querySelector('img');
+                    if (img) container.appendChild(tick.cloneNode(true));
+                });
+            }
+        });
+
+        function saveTicksvalues() {
+            coordinates_arr = []
+            ticksData.map((value) => {
+                coordinates_arr.push({
+                    X: parseFloat(value.x.toFixed(2)),
+                    Y: parseFloat(value.y.toFixed(2))
+                })
+            });
+            console.log(JSON.stringify(coordinates_arr));
+
+        }
+        function resetTicks() {
+            document.querySelectorAll(`#images-preview-1 .tick, #images-preview-2 .tick`).forEach(tickElement => {
+                tickElement.remove();
+            });
+            ticksData.splice(0);
+            console.log(ticksData);
+        }
+    </script>
+</body>
+
+</html>

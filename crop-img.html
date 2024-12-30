@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Cropper</title>
+  <!-- Include Bootstrap CSS (Optional for styling modal) -->
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Include Cropper.js CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.11/cropper.min.css">
+  <style>
+    /* Custom styles */
+    .modal-body {
+      overflow: hidden;
+    }
+    .img-container {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Button to trigger image upload -->
+<input type="file" id="upload" accept="image/*" class="form-control">
+<!-- Modal for Image Cropper -->
+<div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalLabel">Crop Image</h5>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="crop">Crop</button>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="img-container">
+          <img id="image" src="" alt="Select an image to crop" style="max-width: 100%;">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Include jQuery and Bootstrap JS (for Modal functionality) -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
+<!-- Include Cropper.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.11/cropper.min.js"></script>
+
+<script>
+  // Variables to store image and cropper instance
+  var bs_modal = $('#modal');
+  var image = document.getElementById('image');
+  var cropper;
+
+  // Trigger the file input and show modal when an image is selected
+  $('#upload').on('change', function (e) {
+    var files = e.target.files;
+    if (files && files.length > 0) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        image.src = e.target.result;
+        $(bs_modal).modal('show');
+      };
+      reader.readAsDataURL(files[0]);
+    }
+  });
+
+  // Initialize cropper when modal is shown
+  $('#modal').on('shown.bs.modal', function () {
+    cropper = new Cropper(image, {
+      aspectRatio: 1,
+      viewMode: 3,
+      preview: '.preview'
+    });
+  });
+
+  // Destroy cropper when modal is hidden
+  $('#modal').on('hidden.bs.modal', function () {
+    cropper.destroy();
+    cropper = null;
+  });
+
+  // Handle the crop functionality
+  $("#crop").click(function () {
+    var canvas = cropper.getCroppedCanvas({
+      width: 400, // Set desired cropped image width
+      height: 400 // Set desired cropped image height
+    });
+    
+    // Convert canvas to a base64 image
+    canvas.toBlob(function (blob) {
+      var reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = function () {
+        var base64data = reader.result;
+        // Display the cropped image in a new window or use it as needed
+        var image = new Image();
+        image.src = base64data;
+        document.body.appendChild(image); // Display cropped image on the page
+        $(bs_modal).modal('hide'); // Hide modal after cropping
+      };
+    });
+  });
+</script>
+
+</body>
+</html>

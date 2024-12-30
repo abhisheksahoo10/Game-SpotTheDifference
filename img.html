@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Canvas</title>
+    <style>
+        .main-container {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        canvas {
+            width: auto;
+            height: 80vh;
+            border: 1px solid #ddd;
+            display: block;
+        }
+
+        .cropped-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .cropped-container img {
+            border: 1px solid #ddd;
+            max-width: 300px;
+            position: relative;
+        }
+
+        .cross-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="file" id="imageInput" accept="image/*">
+    <div class="main-container">
+        <canvas id="canvas"></canvas>
+        <div class="cropped-container" id="croppedContainer">
+            <!-- Dynamically appended cropped images will appear here -->
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const croppedContainer = document.getElementById('croppedContainer');
+
+        let img = null; // To store the loaded image
+        let isSelecting = false;
+        let startX = 0, startY = 0, endX = 0, endY = 0;
+        const partSelections = [];
+
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img = new Image();
+                    img.onload = () => {
+                        // Set the canvas internal dimensions
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+
+                        // Draw the image on the canvas
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            isSelecting = true;
+            const rect = canvas.getBoundingClientRect();
+            startX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            startY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isSelecting) {
+                const rect = canvas.getBoundingClientRect();
+                endX = (e.clientX - rect.left) * (canvas.width / rect.width);
+                endY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+                // Redraw the image
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                // Draw the selection rectangle
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isSelecting = false;
+
+            const startXPercent = (startX / canvas.width) * 100;
+            const startYPercent = (startY / canvas.height) * 100;
+            const endXPercent = (endX / canvas.width) * 100;
+            const endYPercent = (endY / canvas.height) * 100;
+
+            console.log(
+                `Start: (${startXPercent.toFixed(2)}, ${startYPercent.toFixed(2)})`,
+                `End: (${endXPercent.toFixed(2)}, ${endYPercent.toFixed(2)})`
+            );
+            const partSelection = {
+                id: Date.now(), // Unique ID based on current time
+                startX: startXPercent.toFixed(2),
+                startY: startYPercent.toFixed(2),
+                endX: endXPercent.toFixed(2),
+                endY: endYPercent.toFixed(2)
+            };
+            partSelections.push(partSelection);
+
+            console.log(partSelections);
+
+            // Calculate the selected region
+            const cropX = Math.min(startX, endX);
+            const cropY = Math.min(startY, endY);
+            const cropWidth = Math.abs(endX - startX);
+            const cropHeight = Math.abs(endY - startY);
+
+            // Create a cropped canvas
+            const croppedCanvas = document.createElement('canvas');
+            croppedCanvas.width = cropWidth;
+            croppedCanvas.height = cropHeight;
+            const croppedCtx = croppedCanvas.getContext('2d');
+            croppedCtx.drawImage(
+                canvas,
+                cropX, cropY, cropWidth, cropHeight, // Source coordinates and size
+                0, 0, cropWidth, cropHeight         // Destination coordinates and size
+            );
+
+            // Display the cropped image with a cross button
+            const croppedImgElement = document.createElement('img');
+            croppedImgElement.src = croppedCanvas.toDataURL();
+            croppedImgElement.setAttribute('data-id', partSelection.id); // Store the ID for later reference
+            const crossButton = document.createElement('button');
+            crossButton.classList.add('cross-btn');
+            crossButton.innerText = 'X';
+            crossButton.onclick = () => {
+                removeCroppedImage(croppedImgElement, partSelection.id);
+            };
+
+            const imageContainer = document.createElement('div');
+            imageContainer.style.position = 'relative';
+            imageContainer.style.background = '#f9f9f9';
+            imageContainer.appendChild(croppedImgElement);
+            imageContainer.appendChild(crossButton);
+            croppedContainer.appendChild(imageContainer);
+        });
+
+        // Function to remove the cropped image and its partSelection
+        function removeCroppedImage(imageElement, id) {
+            croppedContainer.removeChild(imageElement.parentNode);
+            const index = partSelections.findIndex(selection => selection.id === id);
+            if (index !== -1) {
+                partSelections.splice(index, 1);
+            }
+            console.log('Updated partSelections:', partSelections);
+        }
+    </script>
+</body>
+
+</html>
